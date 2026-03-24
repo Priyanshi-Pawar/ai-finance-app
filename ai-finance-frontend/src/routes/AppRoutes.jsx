@@ -114,107 +114,88 @@ const Login = () => {
 const DashboardHome = () => {
 
   const [balance, setBalance] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchBalance = async () => {
-
+  const fetchData = async () => {
     try {
+      const balanceData = await getWalletBalance();
+      setBalance(balanceData.balance);
 
-      const data = await getWalletBalance();
+      const txRes = await fetch("http://localhost:5000/api/transactions", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
 
-      setBalance(data.balance);
+      const txData = await txRes.json();
+
+      setTransactions(txData.data || []);
 
     } catch (error) {
-
-      console.error("Failed to fetch balance", error);
-
+      console.error("Error loading dashboard", error);
     } finally {
-
       setLoading(false);
-
     }
   };
 
   useEffect(() => {
-    fetchBalance();
+    fetchData();
   }, []);
 
+  // ✅ transform data for chart
+  const chartData = transactions.map((t, i) => ({
+    name: `T${i + 1}`,
+    amount: Number(t.amount),
+  }));
 
   return (
 
     <div className="space-y-14">
 
       {/* Wallet Balance */}
-
       <div className="bg-white p-8 rounded-xl shadow-sm border">
-
         <p className="text-sm text-muted">
           Current Wallet Balance
         </p>
-
         <h3 className="text-4xl font-semibold mt-3">
-
           {loading ? "Loading..." : `$${balance}`}
-
         </h3>
-
       </div>
 
-
-      {/* Revenue Chart */}
-
+      {/* REAL Chart */}
       <div className="bg-white p-8 rounded-xl shadow-sm border">
 
         <h2 className="text-lg font-semibold mb-8">
-          Revenue Overview
+          Transaction Trend
         </h2>
 
         <div className="h-80">
 
           <ResponsiveContainer width="100%" height="100%">
-
             <LineChart data={chartData}>
-
               <CartesianGrid strokeDasharray="3 3" />
-
               <XAxis dataKey="name" />
-
               <YAxis />
-
               <Tooltip />
-
               <Line
                 type="monotone"
-                dataKey="revenue"
+                dataKey="amount"
                 stroke="#10B981"
                 strokeWidth={3}
               />
-
             </LineChart>
-
           </ResponsiveContainer>
 
         </div>
 
       </div>
 
-
-      {/* Transfer */}
-
-      <TransferForm onSuccess={fetchBalance} />
-
-
-      {/* Transactions */}
-
+      <TransferForm onSuccess={fetchData} />
       <TransactionTable />
-
-
-      {/* AI Assistant */}
-
       <AIChatPanel />
 
     </div>
-
   );
 };
 

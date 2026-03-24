@@ -4,36 +4,26 @@ import API from "../services/api";
 const TransactionTable = () => {
 
   const [transactions, setTransactions] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(1);
+  const limit = 5;
+
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const fetchTransactions = async () => {
     try {
-      const res = await API.get("/transactions");
+      const res = await API.get(`/transactions?page=${page}&limit=${limit}`);
 
-      console.log("API RESPONSE:", res.data);
+      const data = res.data.data || [];
 
-      let tx = [];
-
-      // ✅ Handle YOUR backend response correctly
-      if (Array.isArray(res.data?.data)) {
-        tx = res.data.data; // 🔥 THIS WAS MISSING
-      } 
-      else if (res.data?.data?.transactions) {
-        tx = res.data.data.transactions;
-      } 
-      else if (res.data?.transactions) {
-        tx = res.data.transactions;
-      } 
-      else if (Array.isArray(res.data)) {
-        tx = res.data;
-      }
-
-      console.log("FINAL TX:", tx);
-
-      setTransactions(tx);
+      setTransactions(data);
+      setFiltered(data);
 
     } catch (error) {
-      console.error("Transaction fetch failed:", error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -41,68 +31,72 @@ const TransactionTable = () => {
 
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [page]);
 
-  if (loading) {
-    return (
-      <div className="bg-white p-6 rounded-xl border">
-        Loading transactions...
-      </div>
-    );
-  }
+  // 🔍 filter logic
+  useEffect(() => {
+    if (typeFilter === "all") {
+      setFiltered(transactions);
+    } else {
+      setFiltered(
+        transactions.filter((t) => t.type === typeFilter)
+      );
+    }
+  }, [typeFilter, transactions]);
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="bg-white p-6 rounded-xl border">
 
-      <h2 className="text-lg font-semibold mb-6">
+      <h2 className="text-lg font-semibold mb-4">
         Recent Transactions
       </h2>
 
-      {transactions.length === 0 ? (
-        <p>No transactions yet</p>
+      {/* 🔍 FILTER */}
+      <div className="mb-4">
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="border p-2 rounded"
+        >
+          <option value="all">All</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p>No transactions</p>
       ) : (
         <table className="w-full text-left">
 
           <thead>
             <tr className="border-b text-sm text-gray-500">
-              <th className="pb-3">Type</th>
-              <th className="pb-3">Amount</th>
-              <th className="pb-3">Category</th>
-              <th className="pb-3">Description</th>
-              <th className="pb-3">Date</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Date</th>
             </tr>
           </thead>
 
           <tbody>
 
-            {transactions.map((tx) => (
-              <tr key={tx.id} className="border-b text-sm">
+            {filtered.map((tx) => (
+              <tr key={tx.id} className="border-b">
 
-                <td className={`py-3 font-medium ${
-                  tx.type === "income"
-                    ? "text-green-600"
-                    : "text-red-500"
-                }`}>
-                  {tx.type || "transfer"}
+                <td className={tx.type === "income" ? "text-green-600" : "text-red-500"}>
+                  {tx.type}
                 </td>
 
-                <td className="py-3">
-                  ₹{Number(tx.amount).toFixed(2)}
-                </td>
+                <td>₹{tx.amount}</td>
 
-                <td className="py-3">
-                  {tx.category || "transfer"}
-                </td>
+                <td>{tx.category}</td>
 
-                <td className="py-3">
-                  {tx.description || "-"}
-                </td>
+                <td>{tx.description}</td>
 
-                <td className="py-3">
-                  {tx.created_at
-                    ? new Date(tx.created_at).toLocaleDateString()
-                    : "-"}
-                </td>
+                <td>{new Date(tx.created_at).toLocaleDateString()}</td>
 
               </tr>
             ))}
@@ -111,6 +105,27 @@ const TransactionTable = () => {
 
         </table>
       )}
+
+      {/* 📄 PAGINATION */}
+      <div className="flex justify-between mt-4">
+
+        <button
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          className="px-4 py-2 bg-gray-200 rounded"
+        >
+          Prev
+        </button>
+
+        <span>Page {page}</span>
+
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          className="px-4 py-2 bg-gray-200 rounded"
+        >
+          Next
+        </button>
+
+      </div>
 
     </div>
   );
