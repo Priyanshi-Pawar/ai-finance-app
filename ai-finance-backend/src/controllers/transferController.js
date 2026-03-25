@@ -7,18 +7,19 @@ const { successResponse, errorResponse } = require("../utils/response");
  * ===============================
  */
 exports.transfer = async (req, res, next) => {
-
   try {
-
-    if (!req.user) {
+    // ✅ Auth check
+    if (!req.user || !req.user.id) {
       return errorResponse(res, "Unauthorized", 401);
     }
 
+    // ✅ Extract + normalize
     let { receiverId, amount } = req.body;
 
     receiverId = Number(receiverId);
     amount = Number(amount);
 
+    // ✅ Idempotency key (important for fintech)
     const idempotencyKey =
       req.headers["idempotency-key"] ||
       req.headers["Idempotency-Key"];
@@ -31,30 +32,24 @@ exports.transfer = async (req, res, next) => {
       );
     }
 
+    // ✅ Validations
     if (!receiverId) {
-      return errorResponse(
-        res,
-        "Receiver ID required",
-        400
-      );
+      return errorResponse(res, "Receiver ID required", 400);
     }
 
     if (receiverId === req.user.id) {
+      return errorResponse(res, "Cannot transfer to yourself", 400);
+    }
+
+    if (!amount || isNaN(amount) || amount <= 0) {
       return errorResponse(
         res,
-        "Cannot transfer to yourself",
+        "Amount must be a valid number greater than 0",
         400
       );
     }
 
-    if (!amount || amount <= 0) {
-      return errorResponse(
-        res,
-        "Amount must be greater than 0",
-        400
-      );
-    }
-
+    // 🚀 CALL SERVICE (this is where real logic happens)
     const result = await transferService.transferMoney(
       req.user.id,
       receiverId,
@@ -62,6 +57,7 @@ exports.transfer = async (req, res, next) => {
       idempotencyKey
     );
 
+    // ✅ Response
     return successResponse(
       res,
       result,
@@ -70,6 +66,7 @@ exports.transfer = async (req, res, next) => {
     );
 
   } catch (err) {
+    console.error("TRANSFER ERROR:", err);
     next(err);
   }
 };

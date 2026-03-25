@@ -1,51 +1,47 @@
 const pool = require("../config/db");
-const walletService = require("../services/walletService");
 
 /**
- * Get wallet balance
+ * ===============================
+ * GET WALLET BALANCE (FIXED)
+ * ===============================
  */
 exports.getBalance = async (req, res, next) => {
   try {
-    const wallet = await walletService.getWalletByUser(req.user.id);
+    const userId = req.user.id;
 
-    if (!wallet) {
-      return res.status(404).json({ message: "Wallet not found" });
-    }
-
-    const balance = await walletService.getBalance(wallet.id);
-
-    res.json({ balance });
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * Deposit money
- */
-exports.deposit = async (req, res, next) => {
-  try {
-    const { amount } = req.body;
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ message: "Invalid deposit amount" });
-    }
-
-    const wallet = await walletService.getWalletByUser(req.user.id);
-
-    if (!wallet) {
-      return res.status(404).json({ message: "Wallet not found" });
-    }
-
-    await pool.query(
-      `
-      INSERT INTO ledger_entries (wallet_id, type, amount, description)
-      VALUES ($1, 'credit', $2, 'Deposit')
-      `,
-      [wallet.id, amount]
+    // 1️⃣ Get wallet
+    const walletRes = await pool.query(
+      "SELECT * FROM wallets WHERE user_id = $1",
+      [userId]
     );
 
-    res.json({ message: "Deposit successful" });
+    if (!walletRes.rows.length) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    const wallet = walletRes.rows[0];
+
+    // 2️⃣ Calculate REAL balance from ledger
+    const balanceRes = await pool.query(
+      `
+      SELECT 
+        COALESCE(SUM(CASE WHEN type='credit' THEN amount END),0) -
+        COALESCE(SUM(CASE WHEN type='debit' THEN amount END),0)
+        AS balance
+      FROM ledger_entries
+      WHERE wallet_id = $1
+      `,
+      [wallet.id]
+    );
+
+    const balance = Number(balanceRes.rows[0].balance);
+
+    // 3️⃣ Return balance
+    res.json({
+      success: true,
+      balance,
+    });
+
   } catch (err) {
     next(err);
   }

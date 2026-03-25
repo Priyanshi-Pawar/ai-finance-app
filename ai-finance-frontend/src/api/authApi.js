@@ -3,10 +3,12 @@ import API from "../services/api";
 export const loginUser = async (email, password) => {
   const res = await API.post("/auth/login", { email, password });
 
-  // ✅ FIX: match backend response
+  console.log("LOGIN RAW:", res.data);
+
+  // ✅ SAFE ACCESS
   return {
-    accessToken: res.data.accessToken,
-    refreshToken: res.data.refreshToken,
+    accessToken: res?.data?.data?.accessToken,
+    refreshToken: res?.data?.data?.refreshToken,
   };
 };
 

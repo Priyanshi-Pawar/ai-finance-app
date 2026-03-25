@@ -1,50 +1,51 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { loginUser, logoutUser } from "../api/authApi";
-import {
-  setAccessToken,
-  setRefreshToken,
-  getAccessToken,
-  clearTokens,
-} from "../utils/tokenManager";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+
+  // ✅ restore session on reload
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      setUser({ loggedIn: true });
+    }
+  }, []);
 
   const login = async (email, password) => {
     try {
-      setLoading(true);
-
       const data = await loginUser(email, password);
 
       console.log("LOGIN DATA:", data);
 
-      // ✅ Store token correctly
-      setAccessToken(data.accessToken);
-
-      if (data.refreshToken) {
-        setRefreshToken(data.refreshToken);
+      if (!data.accessToken) {
+        throw new Error("Token missing");
       }
 
-      // ✅ Mark user authenticated
-      setUser({ authenticated: true });
+      localStorage.setItem("accessToken", data.accessToken);
+
+      if (data.refreshToken) {
+        localStorage.setItem("refreshToken", data.refreshToken);
+      }
+
+      setUser({ loggedIn: true });
 
     } catch (err) {
       console.error("Login error:", err);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
       await logoutUser();
-    } catch (err) {}
+    } catch {}
 
-    clearTokens();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+
     setUser(null);
   };
 
@@ -54,9 +55,7 @@ export const AuthProvider = ({ children }) => {
         user,
         login,
         logout,
-        loading,
-        // ✅ Use token instead of user state
-        isAuthenticated: !!getAccessToken(),
+        isAuthenticated: !!localStorage.getItem("accessToken"),
       }}
     >
       {children}
@@ -64,4 +63,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// ✅ THIS WAS MISSING / BROKEN BEFORE
 export const useAuth = () => useContext(AuthContext);

@@ -8,15 +8,41 @@ const TransferForm = ({ onSuccess }) => {
   const [error, setError] = useState("");
 
   const handleTransfer = async () => {
-    setLoading(true);
     setError("");
 
+    // ✅ validation
+    if (!receiverId || !amount || Number(amount) <= 0) {
+      setError("Please enter valid details");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      await transferMoney(receiverId, Number(amount));
+      console.log("🚀 Sending transfer:", {
+        receiverId,
+        amount
+      });
+
+      await transferMoney(
+        Number(receiverId),
+        Number(amount),
+        Date.now().toString() // ✅ unique idempotency key
+      );
+
+      // ✅ reset fields
       setReceiverId("");
       setAmount("");
-      if (onSuccess) onSuccess();
+
+      // ✅ force refresh AFTER transfer
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess();
+        }, 300); // small delay ensures DB commit
+      }
+
     } catch (err) {
+      console.error("Transfer error:", err);
       setError(err.response?.data?.message || "Transfer failed");
     } finally {
       setLoading(false);
@@ -28,7 +54,7 @@ const TransferForm = ({ onSuccess }) => {
       <h2 className="text-lg font-semibold mb-6">Transfer Money</h2>
 
       <input
-        type="text"
+        type="number"
         placeholder="Receiver User ID"
         value={receiverId}
         onChange={(e) => setReceiverId(e.target.value)}

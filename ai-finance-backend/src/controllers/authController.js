@@ -39,10 +39,21 @@ exports.register = async (req, res, next) => {
 
     const user = newUser.rows[0];
 
-    // create wallet automatically
+    // ✅ Create wallet
+    const walletRes = await client.query(
+      "INSERT INTO wallets (user_id, balance) VALUES ($1, $2) RETURNING *",
+      [user.id, 1000]
+    );
+
+    const wallet = walletRes.rows[0];
+
+    // ✅ Create ledger entry (CRITICAL FIX)
     await client.query(
-      "INSERT INTO wallets (user_id) VALUES ($1)",
-      [user.id]
+      `
+      INSERT INTO ledger_entries (wallet_id, type, amount, description)
+      VALUES ($1, 'credit', $2, 'Initial balance')
+      `,
+      [wallet.id, 1000]
     );
 
     await client.query("COMMIT");
@@ -69,7 +80,6 @@ exports.register = async (req, res, next) => {
  */
 exports.login = async (req, res, next) => {
   try {
-
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -112,10 +122,7 @@ exports.login = async (req, res, next) => {
 
     return successResponse(
       res,
-      {
-        accessToken,
-        refreshToken
-      },
+      { accessToken, refreshToken },
       "Login successful",
       200
     );
@@ -132,7 +139,6 @@ exports.login = async (req, res, next) => {
  */
 exports.refreshToken = async (req, res, next) => {
   try {
-
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
@@ -184,7 +190,6 @@ exports.refreshToken = async (req, res, next) => {
  */
 exports.logout = async (req, res, next) => {
   try {
-
     if (!req.user) {
       return errorResponse(res, "Unauthorized", 401);
     }

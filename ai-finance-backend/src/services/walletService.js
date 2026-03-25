@@ -13,17 +13,17 @@ const getWalletByUser = async (userId) => {
 };
 
 /**
- * Calculate wallet balance using wallet_id
+ * Calculate balance from transactions table
  */
 const getBalance = async (walletId) => {
   const result = await pool.query(
     `
     SELECT 
-      COALESCE(SUM(CASE WHEN type = 'credit' THEN amount END), 0) -
-      COALESCE(SUM(CASE WHEN type = 'debit' THEN amount END), 0)
+      COALESCE(SUM(CASE WHEN type = 'income' THEN amount END), 0) -
+      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount END), 0)
       AS balance
-    FROM ledger_entries
-    WHERE wallet_id = $1
+    FROM transactions
+    WHERE user_id = $1
     `,
     [walletId]
   );

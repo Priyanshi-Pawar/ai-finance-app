@@ -3,8 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const transactionRoutes = require("./routes/transactionRoutes");
 
+const transactionRoutes = require("./routes/transactionRoutes");
 const authRoutes = require("./routes/authRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const transferRoutes = require("./routes/transferRoutes");
@@ -25,7 +25,7 @@ const app = express();
 // Secure headers
 app.use(helmet());
 
-// CORS for frontend (Vite default port)
+// CORS
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -38,20 +38,23 @@ app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 100, // limit each IP
+  windowMs: 15 * 60 * 1000,
+  max: 100,
 });
 app.use(limiter);
 
 /**
  * =============================
- * ROUTES (API PREFIXED)
+ * ROUTES
  * =============================
  */
 
 app.use("/api/auth", authRoutes);
 app.use("/api/wallet", walletRoutes);
-app.use("/api/transfer", transferRoutes);
+
+// 🔥 FIXED HERE
+app.use("/api/transfers", transferRoutes);
+
 app.use("/api/payments", paymentRoutes);
 app.use("/api/webhooks", webhookRoutes);
 app.use("/api/dashboard", dashboardRoutes);
@@ -71,9 +74,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-/**
- * Root Check
- */
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -83,9 +83,10 @@ app.get("/", (req, res) => {
 
 /**
  * =============================
- * GLOBAL ERROR HANDLER
+ * ERROR HANDLER
  * =============================
  */
+
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
