@@ -1,11 +1,19 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function DashboardLayout() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const navItem =
     "px-3 py-2 rounded-md text-sm transition-all duration-200";
 
   const activeStyle =
     "bg-primary/10 text-primary font-medium";
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/", { replace: true });
+  };
 
   return (
     <div className="flex min-h-screen bg-light">
@@ -61,7 +69,10 @@ function DashboardLayout() {
             Dashboard Overview
           </h1>
 
-          <button className="bg-primary text-white px-5 py-2 rounded-md text-sm shadow-md hover:shadow-lg transition-all duration-200">
+          <button
+            onClick={handleLogout}
+            className="bg-primary text-white px-5 py-2 rounded-md text-sm shadow-md hover:shadow-lg transition-all duration-200"
+          >
             Logout
           </button>
         </header>

@@ -5,7 +5,7 @@ export const transferMoney = async (receiverId, amount) => {
   const idempotencyKey = uuidv4();
 
   const res = await API.post(
-    "/transfer",
+    "/transfers",
     { receiverId, amount },
     {
       headers: {
