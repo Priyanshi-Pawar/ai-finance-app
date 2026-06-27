@@ -11,18 +11,7 @@ const TransactionTable = () => {
 
       console.log("TX RESPONSE:", res.data);
 
-      let tx = [];
-
-      // ✅ handle all cases safely
-      if (Array.isArray(res.data)) {
-        tx = res.data;
-      } else if (res.data?.data) {
-        tx = res.data.data;
-      } else if (res.data?.transactions) {
-        tx = res.data.transactions;
-      }
-
-      setTransactions(tx || []);
+      setTransactions(res?.data?.data?.transactions || []);
     } catch (err) {
       console.error("TX ERROR:", err);
       setTransactions([]); // ✅ prevent crash

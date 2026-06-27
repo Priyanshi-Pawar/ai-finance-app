@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, logoutUser } from "../api/authApi";
+import { loginUser, logoutUser, registerUser } from "../api/authApi";
 
 const AuthContext = createContext();
 
@@ -14,9 +14,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (identifier, password) => {
     try {
-      const data = await loginUser(email, password);
+      const data = await loginUser(identifier, password);
 
       console.log("LOGIN DATA:", data);
 
@@ -38,6 +38,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (name, password) => {
+    try {
+      const data = await registerUser(name, password);
+      return data;
+    } catch (err) {
+      console.error("Register error:", err);
+      throw err;
+    }
+  };
+
   const logout = async () => {
     try {
       await logoutUser();
@@ -54,6 +64,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         login,
+        register,
         logout,
         isAuthenticated: !!localStorage.getItem("accessToken"),
       }}

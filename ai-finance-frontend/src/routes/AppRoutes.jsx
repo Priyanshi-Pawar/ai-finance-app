@@ -1,11 +1,14 @@
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import TransactionTable from "../components/TransactionTable";
 import TransferForm from "../components/TransferForm";
 import AIChatPanel from "../components/AIChatPanel";
+import ProtectedRoute from "../components/ProtectedRoute";
+import LoginPage from "../pages/LoginPage";
 import { getWalletBalance } from "../api/walletApi";
+import API from "../services/api";
 
 import {
   LineChart,
@@ -29,26 +32,43 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       // ✅ wallet
-      const walletRes = await getWalletBalance();
-      setBalance(walletRes?.balance || 0);
+      const walletBalance = await getWalletBalance();
+      setBalance(walletBalance || 0);
 
       // ✅ transactions
-      const txRes = await fetch("http://localhost:5000/api/transactions", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-
-      const txData = await txRes.json();
-
-      setTransactions(txData?.data || []);
+      const txRes = await API.get("/transactions");
+      setTransactions(txRes?.data?.data?.transactions || []);
     } catch (err) {
       console.error("Dashboard error:", err);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    let active = true;
+
+    const loadDashboardData = async () => {
+      try {
+        // ✅ wallet
+        const walletBalance = await getWalletBalance();
+        if (!active) return;
+        setBalance(walletBalance || 0);
+
+        // ✅ transactions
+        const txRes = await API.get("/transactions");
+        if (!active) return;
+        setTransactions(txRes?.data?.data?.transactions || []);
+      } catch (err) {
+        if (active) {
+          console.error("Dashboard error:", err);
+        }
+      }
+    };
+
+    void loadDashboardData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   // ✅ chart data
@@ -107,6 +127,24 @@ const Dashboard = () => {
   );
 };
 
+const AnalyticsPage = () => (
+  <div className="rounded-xl border bg-white p-6 shadow-sm">
+    <h2 className="text-xl font-semibold text-slate-900">Analytics</h2>
+    <p className="mt-2 text-sm text-slate-500">
+      Your analytics overview can live here.
+    </p>
+  </div>
+);
+
+const SettingsPage = () => (
+  <div className="rounded-xl border bg-white p-6 shadow-sm">
+    <h2 className="text-xl font-semibold text-slate-900">Settings</h2>
+    <p className="mt-2 text-sm text-slate-500">
+      Account and dashboard preferences can live here.
+    </p>
+  </div>
+);
+
 /**
  * =========================
  * ROUTES
@@ -115,9 +153,22 @@ const Dashboard = () => {
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<DashboardLayout />}>
+      <Route path="/" element={<LoginPage />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<Dashboard />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
